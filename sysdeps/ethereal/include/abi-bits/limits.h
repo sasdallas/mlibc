@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/limits.h
+../../../../abis/linux/limits.h

@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/fsfilcnt_t.h
+../../../../abis/linux/fsfilcnt_t.h

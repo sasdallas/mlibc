@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/dev_t.h
+../../../../abis/linux/dev_t.h

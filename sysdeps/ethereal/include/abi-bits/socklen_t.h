@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/socklen_t.h
+../../../../abis/linux/socklen_t.h

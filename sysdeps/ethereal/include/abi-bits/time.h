@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/time.h
+../../../../abis/linux/time.h

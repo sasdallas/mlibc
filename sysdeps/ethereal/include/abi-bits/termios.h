@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/termios.h
+../../../../abis/linux/termios.h

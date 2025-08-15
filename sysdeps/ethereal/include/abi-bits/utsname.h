@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/utsname.h
+../../../../abis/linux/utsname.h

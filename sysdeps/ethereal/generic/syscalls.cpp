@@ -1,13 +1,17 @@
+#include <asm/ioctls.h>
+#include <bits/ensure.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <mlibc/all-sysdeps.hpp>
+#include <mlibc/debug.hpp>
 #include <sys/syscall.h>
 #include <sys/syscall_nums.h>
-#include <mlibc/debug.hpp>
-#include <mlibc/all-sysdeps.hpp>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/select.h>
 #include <sys/types.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
 
 struct __mmap_context {
     void *addr;
@@ -24,7 +28,7 @@ DEFINE_SYSCALL3(write, SYS_WRITE, int, void *, size_t);
 DEFINE_SYSCALL3(read, SYS_READ, int, void *, size_t);
 DEFINE_SYSCALL1(mmap, SYS_MMAP, struct __mmap_context*);
 DEFINE_SYSCALL2(munmap, SYS_MUNMAP, void *, size_t);
-DEFINE_SYSCALL3(mprotect, SYS_MPROTECT, void *, size_t, int)
+DEFINE_SYSCALL3(mprotect, SYS_MPROTECT, void *, size_t, int);
 DEFINE_SYSCALL3(lseek, SYS_LSEEK, int, off_t, int);
 DEFINE_SYSCALL1(close, SYS_CLOSE, int);
 DEFINE_SYSCALL1(settls, SYS_SETTLS, uintptr_t);
@@ -133,5 +137,15 @@ namespace mlibc {
     int sys_tcb_set(void *pointer) {
         return __syscall_settls((uintptr_t)pointer);
     }
-    
+  
+    int sys_futex_wait(int *pointer, int expected, const struct timespec *time) {
+        sys_libc_log("mlibc: sys_futex_wait is stub\n");
+        sys_libc_panic();
+    } 
+
+    int sys_futex_wake(int *pointer) {
+        sys_libc_log("mlibc: sys_futex_wake is stub\n");
+        sys_libc_panic();
+    }
+
 };

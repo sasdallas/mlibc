@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/in.h
+../../../../abis/linux/in.h

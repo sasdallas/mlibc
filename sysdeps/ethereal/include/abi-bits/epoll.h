@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/epoll.h
+../../../../abis/linux/epoll.h

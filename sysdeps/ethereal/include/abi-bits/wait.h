@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/wait.h
+../../../../abis/linux/wait.h

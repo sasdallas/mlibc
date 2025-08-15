@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/xattr.h
+../../../../abis/linux/xattr.h

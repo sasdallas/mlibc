@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/stat.h
+../../../../abis/linux/stat.h

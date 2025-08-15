@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/auxv.h
+../../../../abis/linux/auxv.h

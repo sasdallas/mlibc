@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/fcntl.h
+../../../../abis/linux/fcntl.h

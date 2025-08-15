@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/suseconds_t.h
+../../../../abis/linux/suseconds_t.h

@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/clockid_t.h
+../../../../abis/linux/clockid_t.h

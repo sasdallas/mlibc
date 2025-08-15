@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/packet.h
+../../../../abis/linux/packet.h

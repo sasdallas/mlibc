@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/access.h
+../../../../abis/linux/access.h

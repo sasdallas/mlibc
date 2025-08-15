@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/vt.h
+../../../../abis/linux/vt.h

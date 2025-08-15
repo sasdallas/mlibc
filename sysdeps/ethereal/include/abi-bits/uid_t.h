@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/uid_t.h
+../../../../abis/linux/uid_t.h

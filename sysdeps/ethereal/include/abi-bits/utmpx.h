@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/utmpx.h
+../../../../abis/linux/utmpx.h

@@ -1,1 +1,1 @@
-/home/samuel/mlibc/abis/linux/nlink_t.h
+../../../../abis/linux/nlink_t.h
