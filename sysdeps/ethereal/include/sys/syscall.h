@@ -12,19 +12,28 @@
  */
 
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 #ifndef _SYS_SYSCALL_H
 #define _SYS_SYSCALL_H
+
+#include <sys/syscall_nums.h>
 
 /* System call instruction */
 #define SYSCALL_INSTRUCTION "syscall"
 #define SYSCALL_CLOBBERS    "rcx", "r11", "memory"
 
+#ifdef __cplusplus
+#define __syscall_prefix extern "C" long
+#else
+#define __syscall_prefix long
+#endif
 
 /* Syscall macros */
 #define DEFINE_SYSCALL0(name, num) \
-    extern "C" long __syscall_##name() { \
+    __syscall_prefix __syscall_##name() { \
         long __return_value = num;\
         asm volatile (SYSCALL_INSTRUCTION \
             : "=a"(__return_value) \
@@ -33,7 +42,7 @@ extern "C" {
     }
 
 #define DEFINE_SYSCALL1(name, num, p1_type) \
-    extern "C" long __syscall_##name(p1_type p1) { \
+    __syscall_prefix __syscall_##name(p1_type p1) { \
         long __return_value = num;\
         asm volatile (SYSCALL_INSTRUCTION \
             : "=a"(__return_value) \
@@ -42,7 +51,7 @@ extern "C" {
     }
 
 #define DEFINE_SYSCALL2(name, num, p1_type, p2_type) \
-    extern "C" long __syscall_##name(p1_type p1, p2_type p2) { \
+    __syscall_prefix __syscall_##name(p1_type p1, p2_type p2) { \
         long __return_value = num;\
         asm volatile (SYSCALL_INSTRUCTION \
             : "=a"(__return_value) \
@@ -51,7 +60,7 @@ extern "C" {
     }
 
 #define DEFINE_SYSCALL3(name, num, p1_type, p2_type, p3_type) \
-    extern "C" long __syscall_##name(p1_type p1, p2_type p2, p3_type p3) { \
+    __syscall_prefix __syscall_##name(p1_type p1, p2_type p2, p3_type p3) { \
         long __return_value = num;\
         asm volatile (SYSCALL_INSTRUCTION \
             : "=a"(__return_value) \
@@ -60,7 +69,7 @@ extern "C" {
     }
 
 #define DEFINE_SYSCALL4(name, num, p1_type, p2_type, p3_type, p4_type) \
-    extern "C" long __syscall_##name(p1_type p1, p2_type p2, p3_type p3, p4_type p4) { \
+    __syscall_prefix __syscall_##name(p1_type p1, p2_type p2, p3_type p3, p4_type p4) { \
         long __return_value = num;\
         register long _p4 __asm__("r10") = (long)p4; \
         asm volatile (SYSCALL_INSTRUCTION \
@@ -70,7 +79,7 @@ extern "C" {
     }
 
 #define DEFINE_SYSCALL5(name, num, p1_type, p2_type, p3_type, p4_type, p5_type) \
-    extern "C" long __syscall_##name(p1_type p1, p2_type p2, p3_type p3, p4_type p4, p5_type p5) { \
+    __syscall_prefix __syscall_##name(p1_type p1, p2_type p2, p3_type p3, p4_type p4, p5_type p5) { \
         long __return_value = num;\
         register long _p4 __asm__("r10") = (long)p4; \
         register long _p5 __asm__("r8") = (long)p5; \
@@ -82,4 +91,10 @@ extern "C" {
 
 #endif
 
+#ifndef __sets_errno
+#define __sets_errno(fn) {long _ret = fn; if ((int)_ret < 0) { errno = -_ret; _ret = -1; } return _ret; }
+#endif
+
+#ifdef __cplusplus
 };
+#endif

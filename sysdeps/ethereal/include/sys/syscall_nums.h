@@ -1,5 +1,3 @@
-extern "C" {
-
 #ifndef _SYS_SYSCALL_NUMS_H
 #define _SYS_SYSCALL_NUMS_H
 
@@ -100,7 +98,6 @@ extern "C" {
 #define SYS_SETITIMER       94
 #define SYS_PTRACE          95
 #define SYS_REBOOT          96 // Ethereal API
+#define SYS_READ_ENTRIES    97 // mlibc
 
 #endif
-
-};

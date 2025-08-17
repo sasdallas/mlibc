@@ -71,6 +71,14 @@ if not no_headers
 		subdir: 'abi-bits',
 		follow_symlinks: true,
 	)
+
+	install_headers(
+		'include/sys/syscall.h',
+		'include/sys/syscall_nums.h',
+		'include/sys/ioctl_ethereal.h',
+		subdir: 'sys',
+		follow_symlinks: true,
+	)
 endif
 
 if not headers_only
