@@ -107,6 +107,9 @@ DEFINE_SYSCALL2(sethostname, SYS_SETHOSTNAME, const char *, size_t);
 DEFINE_SYSCALL2(gettimeofday, SYS_GETTIMEOFDAY, struct timeval*, void*);
 DEFINE_SYSCALL2(settimeofday, SYS_SETTIMEOFDAY, struct timeval*, void*);
 DEFINE_SYSCALL1(uname, SYS_UNAME, struct utsname *);
+DEFINE_SYSCALL2(mkdir, SYS_MKDIR, const char *, mode_t);
+DEFINE_SYSCALL2(access, SYS_ACCESS, const char *, int);
+DEFINE_SYSCALL3(readlink, SYS_READLINK, const char*, char*, size_t);
 
 
 namespace mlibc {
@@ -172,7 +175,11 @@ namespace mlibc {
     }
 
     int sys_close(int fd) {
-        return __syscall_close(fd);
+        return -__syscall_close(fd);
+    }
+
+    int sys_mkdir(const char *path, mode_t mode) {
+        return -__syscall_mkdir(path, mode);
     }
 
     int sys_vm_map(void *addr, size_t size, int prot, int flags, int fd, off_t offset, void **window) {
@@ -185,9 +192,10 @@ namespace mlibc {
         ctx.off = offset;
 
         long ret = __syscall_mmap(&ctx);
-        if ((int)ret < 0) {
+        if (ret < 0) {
+            mlibc::infoLogger() << "mlibc: mmap failed due to error " << ret << frg::endlog;
             *window = MAP_FAILED;
-            return -((int)ret);
+            return -(ret);
         }
 
         *window = (void*)ret;
@@ -229,6 +237,10 @@ namespace mlibc {
                 mlibc::infoLogger() << "mlibc: clock ID " << clock << " not implemented" << frg::endlog;
                 return ENOSYS;
         }
+    }
+
+    int sys_access(const char *path, int mode) {
+        return -__syscall_access(path, mode);
     }
 
     int sys_waitpid(pid_t pid, int *status, int flags, struct rusage *ru, pid_t *ret_pid) {
@@ -388,6 +400,14 @@ namespace mlibc {
         return -(__syscall_fchdir(fd));
     }
     
+    /* READLINK */
+    int sys_readlink(const char *path, void *buffer, size_t max_size, ssize_t *length) {
+        long err = __syscall_readlink(path, (char*)buffer, max_size);
+        if (err < 0) return -err;
+        *length = err;
+        return 0;
+    }
+
     /* Directories */
     int sys_open_dir(const char *path, int *handle) {
         return sys_open(path, O_DIRECTORY, 0, handle);
@@ -606,5 +626,11 @@ namespace mlibc {
     /* UNAME */
     int sys_uname(struct utsname *buf) {
         return -(__syscall_uname(buf));
+    }
+
+    /* FSYNC */
+    int sys_fsync(int fd) {
+        // mlibc::infoLogger() << "mlibc: fsync is unimplemented" << frg::endlog;
+        return 0;
     }
 };
