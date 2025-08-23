@@ -14,6 +14,7 @@
 #include <sys/select.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ptrace.h>
 #include <termios.h>
 #include <string.h>
 
@@ -110,6 +111,7 @@ DEFINE_SYSCALL1(uname, SYS_UNAME, struct utsname *);
 DEFINE_SYSCALL2(mkdir, SYS_MKDIR, const char *, mode_t);
 DEFINE_SYSCALL2(access, SYS_ACCESS, const char *, int);
 DEFINE_SYSCALL3(readlink, SYS_READLINK, const char*, char*, size_t);
+DEFINE_SYSCALL4(ptrace, SYS_PTRACE, enum __ptrace_request, pid_t, void*, void*);
 
 
 namespace mlibc {
@@ -372,12 +374,14 @@ namespace mlibc {
 
     int sys_futex_wait(int *pointer, int expected, const struct timespec *time) {
         sys_libc_log("mlibc: sys_futex_wait is stub\n");
-        sys_libc_panic();
+        // sys_libc_panic();
+        return 0;
     } 
 
     int sys_futex_wake(int *pointer) {
         sys_libc_log("mlibc: sys_futex_wake is stub\n");
-        sys_libc_panic();
+        // sys_libc_panic();
+        return 0;
     }
 
     /* CWD */
@@ -560,7 +564,7 @@ namespace mlibc {
 
     /* SLEEP */
     int sys_sleep(time_t *secs, long *nanos) {
-        useconds_t usec = (*secs * 100000) + (*nanos/1000);
+        useconds_t usec = (*secs * 1000000) + (*nanos/1000);
         __syscall_usleep(usec);
         return 0;
     }
@@ -631,6 +635,34 @@ namespace mlibc {
     /* FSYNC */
     int sys_fsync(int fd) {
         // mlibc::infoLogger() << "mlibc: fsync is unimplemented" << frg::endlog;
+        return 0;
+    }
+
+    /* RANDOM */
+    #ifndef MLIBC_BUILDING_RTLD
+    int sys_getentropy(void *buffer, size_t length) {
+        int fd;
+        if (sys_open("/device/random", O_RDONLY, 0, &fd)) {
+            mlibc::panicLogger() << "mlibc: /device/random: " << strerror(errno) << frg::endlog;
+        }
+
+        ssize_t bytes;
+        int err = sys_read(fd, buffer, length, &bytes); 
+        if (err) {
+            mlibc::infoLogger() << "mlibc: reading from /device/random failed: " << strerror(errno) << frg::endlog;
+            return err;
+        }
+
+        sys_close(fd);
+        return 0;
+    }
+    #endif
+
+    /* PTRACE */
+    int sys_ptrace(long req, pid_t pid, void *addr, void *data, long *out) {
+        long err = __syscall_ptrace((enum __ptrace_request)req, pid, addr, data);
+        if (err < 0) return -err;
+        *out = err;
         return 0;
     }
 };
