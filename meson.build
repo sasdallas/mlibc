@@ -71,7 +71,7 @@ if not headers_only
 	libc_deps += frigg_dep
 	rtld_deps += frigg_dep
 
-	add_project_arguments('-fconcepts', '-std=c++20')
+	add_project_arguments('-fconcepts', '-std=c++20', language: ['c', 'cpp'])
 	add_project_arguments('-Wno-unused-function', '-D__MLIBC_BUILDING_MLIBC', language: ['c', 'cpp'])
 	add_project_arguments('-nostdinc', '-fno-builtin', '-ffreestanding', language: ['c', 'cpp'])
 	add_project_arguments('-Werror=misleading-indentation', language: ['c', 'cpp'])
