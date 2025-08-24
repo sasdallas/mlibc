@@ -3,7 +3,8 @@
 
 
 enum __ptrace_request {
-    PTRACE_TRACEME,
+    PTRACE_RESERVED,
+    PTRACE_TRACEME = 5,             // Fixes an mlibc thing
     PTRACE_PEEKDATA,
     PTRACE_POKEDATA,
     PTRACE_GETREGS,
