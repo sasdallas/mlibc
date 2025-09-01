@@ -112,6 +112,7 @@ DEFINE_SYSCALL2(mkdir, SYS_MKDIR, const char *, mode_t);
 DEFINE_SYSCALL2(access, SYS_ACCESS, const char *, int);
 DEFINE_SYSCALL3(readlink, SYS_READLINK, const char*, char*, size_t);
 DEFINE_SYSCALL4(ptrace, SYS_PTRACE, enum __ptrace_request, pid_t, void*, void*);
+DEFINE_SYSCALL3(setitimer, SYS_SETITIMER, int, const struct itimerval*, struct itimerval*);
 
 
 namespace mlibc {
@@ -670,5 +671,11 @@ namespace mlibc {
     int sys_unlinkat(int fd, const char *path, int flags) {
         mlibc::infoLogger() << "mlibc: sys_unlinkat is unimplemented" << frg::endlog;
         return 0;
+    }
+
+    /* SETITIMER */
+    int sys_setitimer(int which, const struct itimerval *new_value, struct itimerval *old_value) {
+        long ret = __syscall_setitimer(which, new_value, old_value);
+        return ret;
     }
 };
