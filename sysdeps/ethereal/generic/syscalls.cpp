@@ -232,7 +232,7 @@ namespace mlibc {
                 err = __syscall_gettimeofday(&t, NULL);
                 if (err < 0) return -err;
                 *secs = t.tv_sec;
-                *nanos = t.tv_usec;
+                *nanos = t.tv_usec * 1000;
                 return 0;
 
             default:
@@ -663,6 +663,12 @@ namespace mlibc {
         long err = __syscall_ptrace((enum __ptrace_request)req, pid, addr, data);
         if (err < 0) return -err;
         *out = err;
+        return 0;
+    }
+
+    /* IO */
+    int sys_unlinkat(int fd, const char *path, int flags) {
+        mlibc::infoLogger() << "mlibc: sys_unlinkat is unimplemented" << frg::endlog;
         return 0;
     }
 };
