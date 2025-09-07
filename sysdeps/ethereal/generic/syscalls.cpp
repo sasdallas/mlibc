@@ -17,6 +17,9 @@
 #include <sys/ptrace.h>
 #include <termios.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <mlibc/arch-defs.hpp>
 
 struct __mmap_context {
     void *addr;
@@ -113,7 +116,13 @@ DEFINE_SYSCALL2(access, SYS_ACCESS, const char *, int);
 DEFINE_SYSCALL3(readlink, SYS_READLINK, const char*, char*, size_t);
 DEFINE_SYSCALL4(ptrace, SYS_PTRACE, enum __ptrace_request, pid_t, void*, void*);
 DEFINE_SYSCALL3(setitimer, SYS_SETITIMER, int, const struct itimerval*, struct itimerval*);
-
+DEFINE_SYSCALL4(create_thread, SYS_CREATE_THREAD, uintptr_t, uintptr_t, void*, void*);
+DEFINE_SYSCALL1(exit_thread, SYS_EXIT_THREAD, void *);
+DEFINE_SYSCALL2(join_thread, SYS_JOIN_THREAD, pid_t, void **);
+DEFINE_SYSCALL2(kill_thread, SYS_KILL_THREAD, pid_t, int);
+DEFINE_SYSCALL3(futex_wait, SYS_FUTEX_WAIT, int*, int, const struct timespec*);
+DEFINE_SYSCALL1(futex_wake, SYS_FUTEX_WAKE, int*);
+DEFINE_SYSCALL0(yield, SYS_YIELD);
 
 namespace mlibc {
 
@@ -371,18 +380,21 @@ namespace mlibc {
         return 0;
     }
 
+    /* YIELD */
+    void sys_yield() {
+        __syscall_yield();
+    }
+
     /* FUTEX */
 
     int sys_futex_wait(int *pointer, int expected, const struct timespec *time) {
-        sys_libc_log("mlibc: sys_futex_wait is stub\n");
-        // sys_libc_panic();
-        return 0;
+        long ret = __syscall_futex_wait(pointer, expected, time);
+        return -ret;
     } 
 
     int sys_futex_wake(int *pointer) {
-        sys_libc_log("mlibc: sys_futex_wake is stub\n");
-        // sys_libc_panic();
-        return 0;
+        long ret = __syscall_futex_wake(pointer);
+        return -ret;
     }
 
     /* CWD */
@@ -678,4 +690,52 @@ namespace mlibc {
         long ret = __syscall_setitimer(which, new_value, old_value);
         return ret;
     }
+
+    /* THREAD */
+    
+    #ifndef MLIBC_BUILDING_RTLD
+	extern "C" void __mlibc_thread_entry();
+    int sys_clone(void *tcb, pid_t *pid_out, void *stack) {
+        long ret = __syscall_create_thread((uintptr_t)stack, (uintptr_t)tcb, (void*)__mlibc_thread_entry, NULL);
+        if (ret < 0) return -ret;
+
+        *pid_out = (pid_t)ret;
+        return 0;
+    }
+
+
+    /* Taken from ironclad */
+	int sys_prepare_stack(void **stack, void *entry, void *arg, void *tcb, size_t *stack_size, size_t *guard_size, void **stack_base) {
+		*guard_size = mlibc::page_size;
+
+		*stack_size = *stack_size ? *stack_size : 0x10000;
+
+		if (!*stack) {
+			*stack_base = mmap(NULL, *stack_size + mlibc::page_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+			if (*stack_base == MAP_FAILED) {
+				return errno;
+			}
+			munmap((char *)*stack_base + *stack_size, mlibc::page_size);
+		} else {
+			*stack_base = *stack;
+		}
+
+		*stack = (void *)((char *)*stack_base + *stack_size);
+
+		void **stack_it = (void **)*stack;
+
+		*--stack_it = arg;
+		*--stack_it = tcb;
+		*--stack_it = entry;
+
+		*stack = (void *)stack_it;
+
+		return 0;
+	}
+
+
+    [[noreturn, gnu::weak]] void sys_thread_exit() {
+        __syscall_exit_thread(0);
+    }
+    #endif
 };

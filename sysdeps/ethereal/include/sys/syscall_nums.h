@@ -99,5 +99,7 @@
 #define SYS_PTRACE          95
 #define SYS_REBOOT          96 // Ethereal API
 #define SYS_READ_ENTRIES    97 // mlibc
+#define SYS_FUTEX_WAIT      98
+#define SYS_FUTEX_WAKE      99
 
 #endif
