@@ -250,6 +250,8 @@ int pthread_mutex_lock(pthread_mutex_t *__mtx);
 int pthread_mutex_trylock(pthread_mutex_t *__mtx);
 int pthread_mutex_timedlock(pthread_mutex_t *__restrict __mtx,
 		const struct timespec *__restrict __abs_timeout);
+int pthread_mutex_clocklock(pthread_mutex_t *__restrict mutex,
+		clockid_t clock_id, const struct timespec *__restrict ts);
 int pthread_mutex_unlock(pthread_mutex_t *__mtx);
 
 int pthread_mutex_consistent(pthread_mutex_t *__mtx);
@@ -273,6 +275,8 @@ int pthread_cond_destroy(pthread_cond_t *__cond);
 int pthread_cond_wait(pthread_cond_t *__restrict __cond, pthread_mutex_t *__restrict __mtx);
 int pthread_cond_timedwait(pthread_cond_t *__restrict __cond, pthread_mutex_t *__restrict __mtx,
 		const struct timespec *__restrict __abs_timeout);
+int pthread_cond_clockwait(pthread_cond_t *__restrict cond, pthread_mutex_t *__restrict mutex,
+	clockid_t clock_id, const struct timespec *__restrict abstime);
 int pthread_cond_signal(pthread_cond_t *__cond);
 int pthread_cond_broadcast(pthread_cond_t *__cond);
 

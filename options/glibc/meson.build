@@ -90,6 +90,7 @@ if not no_headers
 		'include/bits/glibc/glibc_icmp6.h',
 		'include/bits/glibc/glibc_search.h',
 		'include/bits/glibc/glibc_stdlib.h',
+		'include/bits/glibc/glibc_ctype.h',
 		subdir: 'bits/glibc'
 	)
 endif

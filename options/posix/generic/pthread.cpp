@@ -983,6 +983,11 @@ int pthread_mutex_timedlock(pthread_mutex_t *__restrict,
 	__builtin_unreachable();
 }
 
+int pthread_mutex_clocklock(pthread_mutex_t *__restrict mutex,
+		clockid_t clock_id, const struct timespec *__restrict ts) {
+	return pthread_mutex_timedlock(mutex, ts); /* TODO */
+}
+
 int pthread_mutex_unlock(pthread_mutex_t *mutex) {
 	SCOPE_TRACE();
 
@@ -1058,6 +1063,11 @@ int pthread_cond_wait(pthread_cond_t *__restrict cond, pthread_mutex_t *__restri
 int pthread_cond_timedwait(pthread_cond_t *__restrict cond, pthread_mutex_t *__restrict mutex,
 		const struct timespec *__restrict abstime) {
 	return mlibc::thread_cond_timedwait(cond, mutex, abstime);
+}
+
+int pthread_cond_clockwait(pthread_cond_t *__restrict cond, pthread_mutex_t *__restrict mutex,
+		clockid_t clock_id, const struct timespec *__restrict abstime) {
+	return mlibc::thread_cond_timedwait(cond, mutex, abstime); /* TODO */
 }
 
 int pthread_cond_signal(pthread_cond_t *cond) {
