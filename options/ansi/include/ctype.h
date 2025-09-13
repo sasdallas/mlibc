@@ -39,10 +39,6 @@ int toupper(int __c);
 }
 #endif
 
-#ifdef __MLIBC_GLIBC_OPTION
-#include <bits/glibc/glibc_ctype.h>
-#endif
-
 #if __MLIBC_POSIX_OPTION
 #	include <bits/posix/posix_ctype.h>
 #endif
