@@ -239,6 +239,8 @@ namespace mlibc {
         long err;
         switch (clock) {
             case CLOCK_REALTIME:    
+            case CLOCK_MONOTONIC:
+            case CLOCK_MONOTONIC_RAW:
                 err = __syscall_gettimeofday(&t, NULL);
                 if (err < 0) return -err;
                 *secs = t.tv_sec;
@@ -637,7 +639,8 @@ namespace mlibc {
     /* FCNTL */
     int sys_fcntl(int fd, int request, va_list args, int *result) {
         mlibc::infoLogger() << "mlibc: fcntl is unimplemented, received request " << request << " for fd " << fd << frg::endlog;
-        return ENOSYS;
+        *result = 0;
+        return 0;
     }
 
     /* UNAME */

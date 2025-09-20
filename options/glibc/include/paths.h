@@ -7,6 +7,12 @@
 #define	_PATH_DEFPATH "/usr/local/bin:/bin:/usr/bin"
 #define	_PATH_STDPATH "/bin:/usr/bin:/sbin:/usr/sbin"
 
+#ifdef __ETHEREAL__
+
+#include <abi-bits/paths.h>
+
+#else
+
 #define	_PATH_BSHELL	"/bin/sh"
 #define	_PATH_CONSOLE	"/dev/console"
 #define	_PATH_DEVNULL	"/dev/null"
@@ -36,6 +42,8 @@
 #ifdef _GNU_SOURCE
 #define _PATH_UTMPX _PATH_UTMP
 #define _PATH_WTMPX _PATH_WTMP
+#endif
+
 #endif
 
 #endif /* _PATHS_H */
