@@ -501,6 +501,7 @@ if not headers_only
 
 	libc_cpp_args = [
 		'-Wno-unknown-pragmas',
+		'-DFRG_HAVE_LIBC'
 	]
 
 	if c_compiler.get_id() == 'clang'
