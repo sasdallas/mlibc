@@ -12,6 +12,7 @@
 #include <bits/ensure.h>
 #include <frg/allocation.hpp>
 #include <frg/array.hpp>
+#include <frg/spinlock.hpp>
 #include <mlibc/allocator.hpp>
 #include <mlibc/debug.hpp>
 #include <mlibc/posix-sysdeps.hpp>
@@ -1435,4 +1436,34 @@ int pthread_getcpuclockid(pthread_t, clockid_t *) {
 	mlibc::infoLogger() << "mlibc: pthread_getcpuclockid() always returns ENOENT"
 			<< frg::endlog;
 	return ENOENT;
+}
+
+// pthread_spin functions
+
+
+int pthread_spin_init(pthread_spinlock_t *__lock, int pshared) {
+	__atomic_clear(&__lock->lock, __ATOMIC_RELEASE);
+	return 0;
+}
+
+int pthread_spin_destroy(pthread_spinlock_t *__lock) {
+	return 0;
+}
+
+int pthread_spin_lock(pthread_spinlock_t *__lock) {
+	while (__atomic_test_and_set(&__lock->lock, __ATOMIC_ACQUIRE)) {
+		frg::detail::loophint();
+	}
+}
+
+int pthread_spin_trylock(pthread_spinlock_t *__lock) {
+	if (__atomic_test_and_set(&__lock->lock, __ATOMIC_ACQUIRE)) {
+		return EBUSY;
+	}
+
+	return 0;
+}
+
+int pthread_spin_unlock(pthread_spinlock_t *__lock) {
+	__atomic_clear(&__lock->lock, __ATOMIC_RELEASE);
 }

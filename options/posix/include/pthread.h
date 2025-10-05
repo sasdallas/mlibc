@@ -63,6 +63,7 @@ extern "C" {
 #define PTHREAD_COND_INITIALIZER {0}
 #define PTHREAD_MUTEX_INITIALIZER {0, 0, 0, 0}
 #define PTHREAD_RWLOCK_INITIALIZER {0, 0, 0}
+#define PTHREAD_SPIN_INITIALIZER {0}
 
 #define PTHREAD_CANCELED ((void*) -1)
 
@@ -96,6 +97,12 @@ typedef struct __mlibc_condattr pthread_condattr_t;
 
 typedef struct __mlibc_cond pthread_cond_t;
 
+
+struct __mlibc_spinlock {
+	volatile int lock;
+};
+
+typedef struct __mlibc_spinlock pthread_spinlock_t;
 struct  __mlibc_barrierattr_struct {
 	int __mlibc_pshared;
 };
@@ -315,6 +322,16 @@ int pthread_rwlock_rdlock(pthread_rwlock_t *__rwlock);
 int pthread_rwlock_unlock(pthread_rwlock_t *__rwlock);
 
 int pthread_getcpuclockid(pthread_t __thrd, clockid_t *__clockid);
+
+/* ---------------------------------------------------------------------------- */
+/* pthread_spin functions. */
+/* ---------------------------------------------------------------------------- */
+
+int pthread_spin_init(pthread_spinlock_t *__lock, int pshared);
+int pthread_spin_destroy(pthread_spinlock_t *__lock);
+int pthread_spin_lock(pthread_spinlock_t *__lock);
+int pthread_spin_trylock(pthread_spinlock_t *__lock);
+int pthread_spin_unlock(pthread_spinlock_t *__lock);
 
 #endif /* !__MLIBC_ABI_ONLY */
 
