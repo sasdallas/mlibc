@@ -123,6 +123,7 @@ DEFINE_SYSCALL2(kill_thread, SYS_KILL_THREAD, pid_t, int);
 DEFINE_SYSCALL3(futex_wait, SYS_FUTEX_WAIT, int*, int, const struct timespec*);
 DEFINE_SYSCALL1(futex_wake, SYS_FUTEX_WAKE, int*);
 DEFINE_SYSCALL0(yield, SYS_YIELD);
+DEFINE_SYSCALL5(mount, SYS_MOUNT, const char *, const char *, const char *, unsigned long, const void *);
 
 namespace mlibc {
 
@@ -741,4 +742,10 @@ namespace mlibc {
         __syscall_exit_thread(0);
     }
     #endif
+
+    /* MOUNT */
+    int sys_mount(const char *source, const char *target,
+		const char *fstype, unsigned long flags, const void *data) {
+        return -(__syscall_mount(source, target, fstype, flags, data));
+    }
 };
