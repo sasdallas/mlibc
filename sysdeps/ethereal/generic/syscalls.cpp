@@ -124,6 +124,9 @@ DEFINE_SYSCALL3(futex_wait, SYS_FUTEX_WAIT, int*, int, const struct timespec*);
 DEFINE_SYSCALL1(futex_wake, SYS_FUTEX_WAKE, int*);
 DEFINE_SYSCALL0(yield, SYS_YIELD);
 DEFINE_SYSCALL5(mount, SYS_MOUNT, const char *, const char *, const char *, unsigned long, const void *);
+DEFINE_SYSCALL3(fcntl, SYS_FCNTL, int, int, int);
+DEFINE_SYSCALL2(chmod, SYS_CHMOD, const char *, mode_t);
+DEFINE_SYSCALL4(openat, SYS_OPENAT, int, const char*, int, mode_t);
 
 namespace mlibc {
 
@@ -639,8 +642,9 @@ namespace mlibc {
 
     /* FCNTL */
     int sys_fcntl(int fd, int request, va_list args, int *result) {
-        mlibc::infoLogger() << "mlibc: fcntl is unimplemented, received request " << request << " for fd " << fd << frg::endlog;
-        *result = 0;
+        int r = __syscall_fcntl(fd, request, va_arg(args, uint64_t));
+        if (r < 0) return -r;
+        *result = r;
         return 0;
     }
 
@@ -652,6 +656,20 @@ namespace mlibc {
     /* FSYNC */
     int sys_fsync(int fd) {
         // mlibc::infoLogger() << "mlibc: fsync is unimplemented" << frg::endlog;
+        return 0;
+    }
+
+    /* CHMOD */
+    int sys_chmod(const char *pathname, mode_t mode) {
+        int r = __syscall_chmod(pathname, mode);
+        return -r;
+    }
+
+    /* OPENAT */
+    int sys_openat(int dirfd, const char *path, int flags, mode_t mode, int *fd) {
+        int r = __syscall_openat(dirfd, path, flags, mode);
+        if (r < 0) return -r;
+        *fd = r;
         return 0;
     }
 
