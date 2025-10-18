@@ -1,4 +1,4 @@
 [wrap-git]
 directory = frigg
 url = https://github.com/managarm/frigg.git
-revision = master
+revision = 5304639c1c9fd3713fd759453b0415b968dcaa06
