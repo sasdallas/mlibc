@@ -1338,7 +1338,7 @@ int daemon(int nochdir, int noclose) {
 		return -1;
 
 	if(!noclose) {
-		int fd = open("/dev/null", O_RDWR);
+		int fd = open("/device/null", O_RDWR);
 		if(fd < 0)
 			return -1;
 

@@ -1,6 +1,6 @@
 sysdep_supported_options = {
 	'posix': true,
-	'linux': true,
+	'linux': false,
 	'glibc': true,
 	'bsd': true,
 }
@@ -13,6 +13,9 @@ libc_sources += files(
 	'generic/entry.cpp',
 	'generic/syscalls.cpp',
 	'generic/thread.cpp',
+	'linux/openpty.cpp',
+	'linux/ptrace.cpp',
+	'linux/mount.cpp',
 	'x86_64/thread.S'
 )
 
@@ -79,8 +82,22 @@ if not no_headers
 		'include/sys/syscall.h',
 		'include/sys/syscall_nums.h',
 		'include/sys/ioctl_ethereal.h',
+		'include/sys/ptrace.h',
+		'include/sys/epoll.h',
+		'include/sys/mount.h',
 		subdir: 'sys',
 		follow_symlinks: true,
+	)
+	
+	install_headers(
+		'include/asm/ioctls.h',
+		subdir: 'asm',
+		follow_symlinks: true,
+	)
+
+	install_headers(
+		'include/pty.h',
+		follow_symlinks: true
 	)
 endif
 
@@ -104,6 +121,15 @@ if not headers_only
 		install_dir: get_option('libdir')
 	)
 	
+	custom_target('Scrt1',
+		build_by_default: true,
+		command: c_compiler.cmd_array() + ['-c', '-o', '@OUTPUT@', '@INPUT@'],
+		input: 'x86_64/crt-srcs/Scrt1.S',
+		output: 'Scrt1.o',
+	install: true,
+		install_dir: get_option('libdir')
+	)
+
 	custom_target('crti',
 		build_by_default: true,
 		command: c_compiler.cmd_array() + ['-c', '-o', '@OUTPUT@', '@INPUT@'],

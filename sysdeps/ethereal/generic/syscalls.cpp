@@ -1,4 +1,3 @@
-#include <asm/ioctls.h>
 #include <bits/ensure.h>
 #include <dirent.h>
 #include <errno.h>
@@ -20,6 +19,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <mlibc/arch-defs.hpp>
+#include <asm/ioctls.h>
 
 struct __mmap_context {
     void *addr;
@@ -114,7 +114,6 @@ DEFINE_SYSCALL1(uname, SYS_UNAME, struct utsname *);
 DEFINE_SYSCALL2(mkdir, SYS_MKDIR, const char *, mode_t);
 DEFINE_SYSCALL2(access, SYS_ACCESS, const char *, int);
 DEFINE_SYSCALL3(readlink, SYS_READLINK, const char*, char*, size_t);
-DEFINE_SYSCALL4(ptrace, SYS_PTRACE, enum __ptrace_request, pid_t, void*, void*);
 DEFINE_SYSCALL3(setitimer, SYS_SETITIMER, int, const struct itimerval*, struct itimerval*);
 DEFINE_SYSCALL4(create_thread, SYS_CREATE_THREAD, uintptr_t, uintptr_t, void*, void*);
 DEFINE_SYSCALL1(exit_thread, SYS_EXIT_THREAD, void *);
@@ -123,7 +122,6 @@ DEFINE_SYSCALL2(kill_thread, SYS_KILL_THREAD, pid_t, int);
 DEFINE_SYSCALL3(futex_wait, SYS_FUTEX_WAIT, int*, int, const struct timespec*);
 DEFINE_SYSCALL1(futex_wake, SYS_FUTEX_WAKE, int*);
 DEFINE_SYSCALL0(yield, SYS_YIELD);
-DEFINE_SYSCALL5(mount, SYS_MOUNT, const char *, const char *, const char *, unsigned long, const void *);
 DEFINE_SYSCALL3(fcntl, SYS_FCNTL, int, int, int);
 DEFINE_SYSCALL2(chmod, SYS_CHMOD, const char *, mode_t);
 DEFINE_SYSCALL4(openat, SYS_OPENAT, int, const char*, int, mode_t);
@@ -693,14 +691,6 @@ namespace mlibc {
     }
     #endif
 
-    /* PTRACE */
-    int sys_ptrace(long req, pid_t pid, void *addr, void *data, long *out) {
-        long err = __syscall_ptrace((enum __ptrace_request)req, pid, addr, data);
-        if (err < 0) return -err;
-        *out = err;
-        return 0;
-    }
-
     /* IO */
     int sys_unlinkat(int fd, const char *path, int flags) {
         mlibc::infoLogger() << "mlibc: sys_unlinkat is unimplemented" << frg::endlog;
@@ -760,10 +750,4 @@ namespace mlibc {
         __syscall_exit_thread(0);
     }
     #endif
-
-    /* MOUNT */
-    int sys_mount(const char *source, const char *target,
-		const char *fstype, unsigned long flags, const void *data) {
-        return -(__syscall_mount(source, target, fstype, flags, data));
-    }
 };
