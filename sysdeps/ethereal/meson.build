@@ -16,6 +16,11 @@ libc_sources += files(
 	'linux/openpty.cpp',
 	'linux/ptrace.cpp',
 	'linux/mount.cpp',
+	'linux/sysinfo.cpp',
+	'linux/ifaddr.cpp',
+	'linux/xattr.cpp',
+	'linux/epoll.cpp',
+	'linux/sched.cpp',
 	'x86_64/thread.S'
 )
 
@@ -26,6 +31,7 @@ if not no_headers
 		'include/abi-bits/seek-whence.h',
 		'include/abi-bits/vm-flags.h',
 		'include/abi-bits/errno.h',
+		'include/abi-bits/ethereal-fixes.h',
 		'include/abi-bits/fcntl.h',
 		'include/abi-bits/in.h',
 		'include/abi-bits/stat.h',
@@ -85,6 +91,9 @@ if not no_headers
 		'include/sys/ptrace.h',
 		'include/sys/epoll.h',
 		'include/sys/mount.h',
+		'include/sys/sysinfo.h',
+		'include/sys/statfs.h',
+		'include/sys/xattr.h',
 		subdir: 'sys',
 		follow_symlinks: true,
 	)
@@ -97,6 +106,7 @@ if not no_headers
 
 	install_headers(
 		'include/pty.h',
+		'include/ifaddrs.h',
 		follow_symlinks: true
 	)
 endif

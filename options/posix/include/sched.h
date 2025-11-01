@@ -20,6 +20,10 @@ extern "C" {
 #include <bits/linux/cpu_set.h>
 #endif
 
+#if defined(__ETHEREAL__)
+#include <abi-bits/ethereal-fixes.h>
+#endif
+
 #define SCHED_OTHER 0
 #define SCHED_FIFO 1
 #define SCHED_RR 2
