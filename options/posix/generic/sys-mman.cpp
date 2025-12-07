@@ -159,6 +159,7 @@ int memfd_create(const char *name, unsigned int flags) {
 
 	return ret;
 }
+#endif
 
 int madvise(void *addr, size_t length, int advice) {
 	MLIBC_CHECK_OR_ENOSYS(mlibc::sys_madvise, -1);
@@ -170,6 +171,7 @@ int madvise(void *addr, size_t length, int advice) {
 	return 0;
 }
 
+#if __MLIBC_LINUX_OPTION
 int mincore(void *addr, size_t length, unsigned char *vec) {
 	MLIBC_CHECK_OR_ENOSYS(mlibc::sys_munlockall, -1);
 	if(int e = mlibc::sys_mincore(addr, length, vec); e) {
