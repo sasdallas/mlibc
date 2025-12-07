@@ -371,6 +371,11 @@ namespace mlibc {
         *pgid = err;
         return 0;
     }
+    
+    int sys_setuid(uid_t uid) { return -__syscall_setuid(uid); }
+    int sys_seteuid(uid_t euid) { return -__syscall_seteuid(euid); }
+    int sys_setgid(gid_t gid) { return -__syscall_setgid(gid); }
+    int sys_setegid(gid_t egid) { return -__syscall_setegid(egid); }
 
     int sys_setpgid(pid_t pid, pid_t pgid) {
         long err = __syscall_setpgid(pid, pgid);
