@@ -1,7 +1,7 @@
 #ifndef _SYS_SYSCALL_NUMS_H
 #define _SYS_SYSCALL_NUMS_H
 
-/* System call definitions - NOT Linux compatible */
+/* System call definitions */
 #define SYS_EXIT            0
 #define SYS_OPEN            2
 #define SYS_READ            3
@@ -19,7 +19,7 @@
 #define SYS_ACCESS          15
 #define SYS_CHMOD           16
 #define SYS_FCNTL           17
-#define SYS_UNLINK          18
+#define SYS_UNLINKAT        18
 #define SYS_FTRUNCATE       19
 #define SYS_BRK             20
 #define SYS_FORK            21
@@ -102,5 +102,16 @@
 #define SYS_FUTEX_WAIT      98
 #define SYS_FUTEX_WAKE      99
 #define SYS_OPENAT          100
+#define SYS_RENAMEAT        101
+#define SYS_LINKAT          102
+#define SYS_SYMLINKAT       103
+#define SYS_FCHMODAT        104 // modified to accept a NULL pathname
+#define SYS_MKNODAT         105
+#define SYS_FLOCK           106
+#define SYS_UMASK           107
+#define SYS_CLOCK_GETTIME   108
+#define SYS_CLOCK_SETTIME   109
+#define SYS_FSYNC           110
+
 
 #endif

@@ -125,6 +125,14 @@ DEFINE_SYSCALL0(yield, SYS_YIELD);
 DEFINE_SYSCALL3(fcntl, SYS_FCNTL, int, int, int);
 DEFINE_SYSCALL2(chmod, SYS_CHMOD, const char *, mode_t);
 DEFINE_SYSCALL4(openat, SYS_OPENAT, int, const char*, int, mode_t);
+DEFINE_SYSCALL3(unlinkat, SYS_UNLINKAT, int, const char *, int);
+DEFINE_SYSCALL5(renameat, SYS_RENAMEAT, int, const char*, int, const char*, unsigned int);
+DEFINE_SYSCALL5(linkat, SYS_LINKAT, int, const char*, int, const char *, int);
+DEFINE_SYSCALL3(symlinkat, SYS_SYMLINKAT, const char *, int, const char *);
+DEFINE_SYSCALL4(fchmodat, SYS_FCHMODAT, int, const char *, mode_t , int);
+DEFINE_SYSCALL4(mknodat, SYS_MKNODAT, int, const char *, mode_t, dev_t);
+DEFINE_SYSCALL2(flock, SYS_FLOCK, int, int);
+DEFINE_SYSCALL1(umask, SYS_UMASK, mode_t);
 
 namespace mlibc {
 
@@ -698,8 +706,20 @@ namespace mlibc {
 
     /* IO */
     int sys_unlinkat(int fd, const char *path, int flags) {
-        mlibc::infoLogger() << "mlibc: sys_unlinkat is unimplemented" << frg::endlog;
-        return 0;
+        long ret = __syscall_unlinkat(fd, path, flags);
+        return ret;
+    }
+
+    int sys_rmdir(const char *path) {
+        return sys_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
+    }
+
+    int sys_renameat(int olddirfd, const char *old_path, int newdirfd, const char *new_path) {
+        return -SYSCALL5(SYS_RENAMEAT, olddirfd, old_path, newdirfd, new_path, 0);
+    }
+
+    int sys_rename(const char *path, const char *new_path) {
+        return sys_renameat(AT_FDCWD, path, AT_FDCWD, new_path);
     }
 
     /* SETITIMER */

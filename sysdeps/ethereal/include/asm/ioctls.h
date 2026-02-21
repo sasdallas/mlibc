@@ -1,6 +1,8 @@
 #ifndef _ASM_IOCTLS_H
 #define _ASM_IOCTLS_H
 
+#include <asm/ioctl.h>
+
 /* List of all the IOCTLs supported, for further explanation on the meanings */
 /* please refer to documentation. If you did not get any, good luck! */
 /* Some IOCTL codes may be the same, in which case the device they are used in */

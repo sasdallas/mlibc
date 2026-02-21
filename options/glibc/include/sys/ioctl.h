@@ -11,6 +11,12 @@
 #   include <sys/ttydefaults.h>
 #endif
 
+#ifdef __ETHEREAL__
+#include <asm/ioctls.h>
+#include <bits/winsize.h>
+#include <sys/ttydefaults.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
