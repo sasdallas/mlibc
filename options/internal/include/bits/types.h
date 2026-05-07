@@ -1,6 +1,34 @@
 #ifndef _MLIBC_INTERNAL_TYPES_H
 #define _MLIBC_INTERNAL_TYPES_H
 
+// !!! SEVERE HACK FOR TCC
+#ifdef __TINYC__
+// ONLY APPLICABLE TO x85_64!!!
+#define __UINT8_TYPE__ unsigned char
+#define __UINT16_TYPE__ unsigned short
+#define __UINT32_TYPE__ unsigned int
+#define __UINT64_TYPE__ unsigned long long
+#define __INT8_TYPE__  char
+#define __INT16_TYPE__  short
+
+#define __INTMAX_TYPE__ __INT64_TYPE__
+#define __UINTMAX_TYPE__ __UINT64_TYPE__
+#define __SIZE_TYPE__ unsigned long
+#define __PTRDIFF_TYPE__ long
+
+#define __SHRT_MAX__ 32767
+
+#define __INT_LEAST8_TYPE__ __INT8_TYPE__
+#define __INT_LEAST16_TYPE__ __INT16_TYPE__
+#define __INT_LEAST32_TYPE__ __INT32_TYPE__
+#define __INT_LEAST64_TYPE__ __INT64_TYPE__
+
+#define __UINT_LEAST8_TYPE__ __UINT8_TYPE__
+#define __UINT_LEAST16_TYPE__ __UINT16_TYPE__
+#define __UINT_LEAST32_TYPE__ __UINT32_TYPE__
+#define __UINT_LEAST64_TYPE__ __UINT64_TYPE__
+#endif
+
 typedef __UINT8_TYPE__  __mlibc_uint8;
 typedef __UINT16_TYPE__ __mlibc_uint16;
 typedef __UINT32_TYPE__ __mlibc_uint32;
@@ -393,7 +421,7 @@ __MLIBC_CHECK_TYPE(__mlibc_uint64, __UINT_LEAST64_TYPE__);
 
 /* Fast-width. */
 /* Unfortunately, GCC and Clang disagree about fast types. */
-#ifndef __clang__
+#if !defined(__clang__) && !defined(__TINYC__)
 	__MLIBC_CHECK_TYPE(__mlibc_int_fast8,  __INT_FAST8_TYPE__);
 	__MLIBC_CHECK_TYPE(__mlibc_int_fast16, __INT_FAST16_TYPE__);
 	__MLIBC_CHECK_TYPE(__mlibc_int_fast32, __INT_FAST32_TYPE__);
