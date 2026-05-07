@@ -143,6 +143,14 @@ namespace mlibc {
 
     void sys_libc_panic() {
         sys_libc_log("\n\033[0;31mINTERNAL ERROR:\033[0m mlibc panic detected!\n");
+        void *frame = __builtin_frame_address(0);
+        mlibc::infoLogger() << "Stack trace:" << frg::endlog;
+        for (int i = 0; i < 16 && frame; i++) {
+            void **fp = (void **)frame;
+            void *ret_addr = fp[1];
+            mlibc::infoLogger() << "  [" << i << "] " << ret_addr << frg::endlog;
+            frame = fp[0];
+        }
         sys_exit(1);
     }
 
@@ -245,22 +253,8 @@ namespace mlibc {
     }
   
     int sys_clock_get(int clock, time_t *secs, long *nanos) {
-        struct timeval t;
-        long err;
-        switch (clock) {
-            case CLOCK_REALTIME:    
-            case CLOCK_MONOTONIC:
-            case CLOCK_MONOTONIC_RAW:
-                err = __syscall_gettimeofday(&t, NULL);
-                if (err < 0) return -err;
-                *secs = t.tv_sec;
-                *nanos = t.tv_usec * 1000;
-                return 0;
-
-            default:
-                mlibc::infoLogger() << "mlibc: clock ID " << clock << " not implemented" << frg::endlog;
-                return ENOSYS;
-        }
+        int err = SYSCALL3(SYS_CLOCK_GETTIME, clock, secs, nanos);
+        return -err;
     }
 
     int sys_access(const char *path, int mode) {
