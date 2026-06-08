@@ -318,6 +318,34 @@ namespace mlibc {
         return 0;
     }
 
+    int sys_ttyname(int fd, char *buffer, size_t size) {
+        // !!!: This is wrong
+        
+        int e = sys_ptsname(fd, buffer, size);
+        mlibc::infoLogger() << "ethereal: sys_ttyname returned \"" << buffer << "\"" << frg::endlog;
+        return e;
+    }
+
+    int sys_pread(int fd, void *buf, size_t n, off_t off, ssize_t *bytes_read) {
+        ssize_t s = SYSCALL4(SYS_PREAD, fd, buf, n, off);
+        if (s < 0) {
+            return -s;
+        }
+
+        *bytes_read = s;
+        return 0;
+    }
+
+    int sys_pwrite(int fd, const void *buf, size_t n, off_t off, ssize_t *bytes_written) {
+        ssize_t s = SYSCALL4(SYS_PWRITE, fd, buf, n, off);
+        if (s < 0) {
+            return -s;
+        }
+
+        *bytes_written = s;
+        return 0;
+    }
+
     /* DUP */
 
     int sys_dup2(int fd, int flags, int newfd) {
@@ -396,16 +424,22 @@ namespace mlibc {
         __syscall_yield();
     }
 
+    int sys_pause() {
+        return SYSCALL0(SYS_PAUSE);
+    }
+
     /* FUTEX */
 
     int sys_futex_wait(int *pointer, int expected, const struct timespec *time) {
         long ret = __syscall_futex_wait(pointer, expected, time);
-        return -ret;
-    } 
+        if (ret < 0) return -ret;
+        return 0;
+    }
 
     int sys_futex_wake(int *pointer) {
         long ret = __syscall_futex_wake(pointer);
-        return -ret;
+        if (ret < 0) return -ret;
+        return 0;
     }
 
     /* CWD */
@@ -528,6 +562,11 @@ namespace mlibc {
         ssize_t result = sys_msg_recv(fd, &message, flags, length);
         if (addr_length) *addr_length = message.msg_namelen;    // Update result
         return result;
+    }
+
+    int sys_socketpair(int domain, int type_and_flags, int proto, int *fds) {
+        long err = SYSCALL4(SYS_SOCKETPAIR, domain, type_and_flags, proto, fds);
+        return -err;
     }
 
     int sys_listen(int fd, int backlog) {
@@ -716,7 +755,25 @@ namespace mlibc {
         return sys_renameat(AT_FDCWD, path, AT_FDCWD, new_path);
     }
 
+    int sys_symlinkat(const char *target_path, int dirfd, const char *link_path) {
+        return -SYSCALL3(SYS_SYMLINKAT, target_path, dirfd, link_path);
+    }
+
+    int sys_symlink(const char *target_path, const char *link_path) {
+        return sys_symlinkat(target_path, AT_FDCWD, link_path);
+    }
+
+    int sys_linkat(int olddirfd, const char *old_path, int newdirfd, const char *new_path, int flags) {
+        mlibc::infoLogger() << "mlibc: sys_linkat olddirfd=" << olddirfd << " newdirfd=" << newdirfd << " old_path=" << old_path << " new_path=" << new_path << frg::endlog;
+        return sys_symlinkat(old_path, newdirfd, new_path);
+    }
+
+    int sys_link(const char *old_path, const char *new_path) {
+        return sys_linkat(AT_FDCWD, old_path, AT_FDCWD, new_path, 0);
+    }
+
     /* SETITIMER */
+
     int sys_setitimer(int which, const struct itimerval *new_value, struct itimerval *old_value) {
         long ret = __syscall_setitimer(which, new_value, old_value);
         return ret;

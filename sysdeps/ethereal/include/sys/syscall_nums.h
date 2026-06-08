@@ -112,6 +112,11 @@
 #define SYS_CLOCK_GETTIME   108
 #define SYS_CLOCK_SETTIME   109
 #define SYS_FSYNC           110
+#define SYS_PREAD           111
+#define SYS_PWRITE          112
+#define SYS_GETRLIMIT       113
+#define SYS_SETRLIMIT       114
+#define SYS_PAUSE           115
 
 
 #endif
