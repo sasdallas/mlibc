@@ -257,6 +257,13 @@ namespace mlibc {
         return -err;
     }
 
+    int sys_times(struct tms *tms, clock_t *out) {
+        long err = SYSCALL1(SYS_TIMES, tms);
+        if (err < 0) return -err;
+        *out = (clock_t)err;
+        return 0;
+    }
+
     int sys_access(const char *path, int mode) {
         return -__syscall_access(path, mode);
     }
@@ -312,8 +319,6 @@ namespace mlibc {
     int sys_ptsname(int fd, char *buffer, size_t length) {
         long error = __syscall_ioctl(fd, IOCTLTTYNAME, buffer);
 
-        mlibc::infoLogger() << "ethereal: sys_ptsname returned \"" << buffer << "\"" << frg::endlog;
-
         if (error < 0) return -error;
         return 0;
     }
@@ -322,7 +327,6 @@ namespace mlibc {
         // !!!: This is wrong
         
         int e = sys_ptsname(fd, buffer, size);
-        mlibc::infoLogger() << "ethereal: sys_ttyname returned \"" << buffer << "\"" << frg::endlog;
         return e;
     }
 
