@@ -264,7 +264,20 @@ int pthread_attr_setsigmask_np(pthread_attr_t *__restrict attr,
 	return 0;
 }
 
+int pthread_getaffinity_np(pthread_t thread, size_t cpusetsize, cpu_set_t *mask) {
+	MLIBC_CHECK_OR_ENOSYS(mlibc::sys_getthreadaffinity, ENOSYS);
+	return mlibc::sys_getthreadaffinity(reinterpret_cast<Tcb*>(thread)->tid, cpusetsize, mask);
+}
+
+int pthread_setaffinity_np(pthread_t thread, size_t cpusetsize, const cpu_set_t *mask) {
+	MLIBC_CHECK_OR_ENOSYS(mlibc::sys_setthreadaffinity, ENOSYS);
+	return mlibc::sys_setthreadaffinity(reinterpret_cast<Tcb*>(thread)->tid, cpusetsize, mask);
+}
+#endif // __MLIBC_LINUX_OPTION
+
 namespace {
+
+#ifndef __ETHEREAL__
 	void get_own_stackinfo(void **stack_addr, size_t *stack_size) {
 		auto fp = fopen("/proc/self/maps", "r");
 		if (!fp) {
@@ -290,6 +303,34 @@ namespace {
 
 		fclose(fp);
 	}
+#else
+	void get_own_stackinfo(void **stack_addr, size_t *stack_size) {
+		auto fp = fopen("/system/processes/self/maps", "r");
+		if (!fp) {
+			mlibc::infoLogger() << "mlibc pthreads: /system/processes/self/maps does not exist! Producing incorrect"
+				" stack results!" << frg::endlog;
+			return;
+		}
+
+		char line[256];
+		auto sp = mlibc::get_sp();
+		fgets(line, 256, fp); // discard first line
+		while (fgets(line, 256, fp)) {
+			uintptr_t from, to;
+			if(sscanf(line, "%" SCNxPTR "-%" SCNxPTR, &from, &to) != 2)
+				continue;
+			if (sp < to && sp > from) {
+				// We need to return the lowest byte of the stack.
+				*stack_addr = reinterpret_cast<void*>(from);
+				*stack_size = to - from;
+				fclose(fp);
+				return;
+			}
+		}
+
+		fclose(fp);
+	}
+#endif
 }
 
 int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
@@ -308,17 +349,6 @@ int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
 	mlibc::infoLogger() << "pthread_getattr_np(): Implementation is incomplete!" << frg::endlog;
 	return 0;
 }
-
-int pthread_getaffinity_np(pthread_t thread, size_t cpusetsize, cpu_set_t *mask) {
-	MLIBC_CHECK_OR_ENOSYS(mlibc::sys_getthreadaffinity, ENOSYS);
-	return mlibc::sys_getthreadaffinity(reinterpret_cast<Tcb*>(thread)->tid, cpusetsize, mask);
-}
-
-int pthread_setaffinity_np(pthread_t thread, size_t cpusetsize, const cpu_set_t *mask) {
-	MLIBC_CHECK_OR_ENOSYS(mlibc::sys_setthreadaffinity, ENOSYS);
-	return mlibc::sys_setthreadaffinity(reinterpret_cast<Tcb*>(thread)->tid, cpusetsize, mask);
-}
-#endif // __MLIBC_LINUX_OPTION
 
 extern "C" Tcb *__rtld_allocateTcb();
 

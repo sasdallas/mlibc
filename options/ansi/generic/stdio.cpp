@@ -570,12 +570,14 @@ static int do_scanf(H &handler, const char *fmt, __builtin_va_list args) {
 				EOF_CHECK(c == '\0');
 				if (c == '0') {
 					handler.consume();
+					++count;
 					c = handler.look_ahead();
 					if (c == 'x') {
 						handler.consume();
 						c = handler.look_ahead();
 					}
 				}
+
 				while (true) {
 					if (c >= '0' && c <= '9') {
 						handler.consume();

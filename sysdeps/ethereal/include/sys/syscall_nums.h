@@ -117,6 +117,7 @@
 #define SYS_GETRLIMIT       113
 #define SYS_SETRLIMIT       114
 #define SYS_PAUSE           115
-
+#define SYS_FCHOWNAT        116
+#define SYS_FACCESSAT       117
 
 #endif

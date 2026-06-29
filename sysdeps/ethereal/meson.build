@@ -21,6 +21,7 @@ libc_sources += files(
 	'linux/xattr.cpp',
 	'linux/epoll.cpp',
 	'linux/sched.cpp',
+	'linux/malloc.cpp',
 	'x86_64/thread.S'
 )
 
@@ -94,6 +95,7 @@ if not no_headers
 		'include/sys/sysinfo.h',
 		'include/sys/statfs.h',
 		'include/sys/xattr.h',
+		'include/sys/sysmacros.h',
 		subdir: 'sys',
 		follow_symlinks: true,
 	)
@@ -108,6 +110,7 @@ if not no_headers
 	install_headers(
 		'include/pty.h',
 		'include/ifaddrs.h',
+		'include/malloc.h',
 		follow_symlinks: true
 	)
 endif

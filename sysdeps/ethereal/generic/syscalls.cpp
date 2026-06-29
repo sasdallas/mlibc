@@ -112,7 +112,6 @@ DEFINE_SYSCALL2(gettimeofday, SYS_GETTIMEOFDAY, struct timeval*, void*);
 DEFINE_SYSCALL2(settimeofday, SYS_SETTIMEOFDAY, struct timeval*, void*);
 DEFINE_SYSCALL1(uname, SYS_UNAME, struct utsname *);
 DEFINE_SYSCALL2(mkdir, SYS_MKDIR, const char *, mode_t);
-DEFINE_SYSCALL2(access, SYS_ACCESS, const char *, int);
 DEFINE_SYSCALL3(readlink, SYS_READLINK, const char*, char*, size_t);
 DEFINE_SYSCALL3(setitimer, SYS_SETITIMER, int, const struct itimerval*, struct itimerval*);
 DEFINE_SYSCALL4(create_thread, SYS_CREATE_THREAD, uintptr_t, uintptr_t, void*, void*);
@@ -123,16 +122,7 @@ DEFINE_SYSCALL3(futex_wait, SYS_FUTEX_WAIT, int*, int, const struct timespec*);
 DEFINE_SYSCALL1(futex_wake, SYS_FUTEX_WAKE, int*);
 DEFINE_SYSCALL0(yield, SYS_YIELD);
 DEFINE_SYSCALL3(fcntl, SYS_FCNTL, int, int, int);
-DEFINE_SYSCALL2(chmod, SYS_CHMOD, const char *, mode_t);
 DEFINE_SYSCALL4(openat, SYS_OPENAT, int, const char*, int, mode_t);
-DEFINE_SYSCALL3(unlinkat, SYS_UNLINKAT, int, const char *, int);
-DEFINE_SYSCALL5(renameat, SYS_RENAMEAT, int, const char*, int, const char*, unsigned int);
-DEFINE_SYSCALL5(linkat, SYS_LINKAT, int, const char*, int, const char *, int);
-DEFINE_SYSCALL3(symlinkat, SYS_SYMLINKAT, const char *, int, const char *);
-DEFINE_SYSCALL4(fchmodat, SYS_FCHMODAT, int, const char *, mode_t , int);
-DEFINE_SYSCALL4(mknodat, SYS_MKNODAT, int, const char *, mode_t, dev_t);
-DEFINE_SYSCALL2(flock, SYS_FLOCK, int, int);
-DEFINE_SYSCALL1(umask, SYS_UMASK, mode_t);
 
 namespace mlibc {
 
@@ -264,8 +254,12 @@ namespace mlibc {
         return 0;
     }
 
+    int sys_faccessat(int dirfd, const char *pathname, int mode, int flags) {
+        return -SYSCALL4(SYS_FACCESSAT, dirfd, pathname, mode, flags);
+    }
+
     int sys_access(const char *path, int mode) {
-        return -__syscall_access(path, mode);
+        return sys_faccessat(AT_FDCWD, path, mode, 0);
     }
 
     int sys_waitpid(pid_t pid, int *status, int flags, struct rusage *ru, pid_t *ret_pid) {
@@ -495,7 +489,11 @@ namespace mlibc {
             // Targeting file descriptor, fstat.
             return -(__syscall_fstat(fd, statbuf));
         } else if (fsfdt == fsfd_target::path) {
-            return -(__syscall_lstat(path, statbuf));
+            if (flags & AT_SYMLINK_NOFOLLOW) {
+                return -(__syscall_lstat(path, statbuf));
+            } else {
+                return -(__syscall_stat(path, statbuf));
+            }
         } else if (fsfdt == fsfd_target::fd_path) {
             mlibc::infoLogger() << "mlibc: fsfd_target::fd_path unimplemented" << frg::endlog;
             return ENOSYS;
@@ -701,16 +699,46 @@ namespace mlibc {
         return -(__syscall_uname(buf));
     }
 
-    /* FSYNC */
-    int sys_fsync(int fd) {
-        // mlibc::infoLogger() << "mlibc: fsync is unimplemented" << frg::endlog;
+    /* UMASK */
+    int sys_umask(mode_t mode, mode_t *old) {
+        long ret = SYSCALL1(SYS_UMASK, mode);
+        if (ret < 0) {
+            return -ret;
+        }
+
+        *old = (mode_t)ret;
         return 0;
     }
 
+    /* FSYNC */
+    int sys_fsync(int fd) {
+        return -(SYSCALL1(SYS_FSYNC, fd));
+    }
+
     /* CHMOD */
+    int sys_fchmodat(int dirfd, const char *pathname, mode_t mode, int flags) {
+        return -SYSCALL4(SYS_FCHMODAT, dirfd, pathname, mode, flags);
+    }
+
+    int sys_fchmod(int fd, mode_t mode) {
+        return sys_fchmodat(fd, "", mode, AT_EMPTY_PATH);
+    }
+
     int sys_chmod(const char *pathname, mode_t mode) {
-        int r = __syscall_chmod(pathname, mode);
-        return -r;
+        return sys_fchmodat(AT_FDCWD, pathname, mode, 0);
+    }
+
+    /* CHOWN */
+    int sys_fchownat(int dirfd, const char *pathname, uid_t uid, gid_t gid, int flags) {
+        return -SYSCALL5(SYS_FCHOWNAT, dirfd, pathname, uid, gid, flags);
+    }
+
+    int sys_fchown(int fd, uid_t uid, gid_t gid) {
+        return sys_fchownat(fd, "", uid, gid, AT_EMPTY_PATH);
+    }
+
+    int sys_chown(const char *pathname, uid_t uid, gid_t gid) {
+        return sys_fchownat(AT_FDCWD, pathname, uid, gid, 0);
     }
 
     /* OPENAT */
@@ -743,8 +771,8 @@ namespace mlibc {
 
     /* IO */
     int sys_unlinkat(int fd, const char *path, int flags) {
-        long ret = __syscall_unlinkat(fd, path, flags);
-        return ret;
+        long ret = SYSCALL3(SYS_UNLINKAT, fd, path, flags);
+        return -ret;
     }
 
     int sys_rmdir(const char *path) {

@@ -112,7 +112,7 @@ int putenv(char *string) {
 	frg::string_view view{string};
 	size_t s = view.find_first('=');
 	if(s == size_t(-1))
-		__ensure(!"Environment strings need to contain an equals sign");
+		return unsetenv((const char*)string);
 
 	update_vector();
 	assign_variable(view.sub_string(0, s), string, true);
