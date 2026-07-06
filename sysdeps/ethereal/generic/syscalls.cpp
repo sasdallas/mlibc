@@ -495,8 +495,7 @@ namespace mlibc {
                 return -(__syscall_stat(path, statbuf));
             }
         } else if (fsfdt == fsfd_target::fd_path) {
-            mlibc::infoLogger() << "mlibc: fsfd_target::fd_path unimplemented" << frg::endlog;
-            return ENOSYS;
+            return -SYSCALL4(SYS_FSTATAT, fd, path, statbuf, flags);
         } else {
             mlibc::panicLogger() << "mlibc: fsfd_target is invalid" << frg::endlog;
             __builtin_unreachable();
@@ -713,6 +712,10 @@ namespace mlibc {
     /* FSYNC */
     int sys_fsync(int fd) {
         return -(SYSCALL1(SYS_FSYNC, fd));
+    }
+
+    void sys_sync() {
+        SYSCALL0(SYS_SYNC);
     }
 
     /* CHMOD */

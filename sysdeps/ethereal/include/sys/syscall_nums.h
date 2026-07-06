@@ -119,5 +119,7 @@
 #define SYS_PAUSE           115
 #define SYS_FCHOWNAT        116
 #define SYS_FACCESSAT       117
+#define SYS_SYNC            118
+#define SYS_FSTATAT         119
 
 #endif

@@ -8,19 +8,22 @@
 #include <wchar.h>
 #include <ctype.h>
 #include <limits.h>
+#include <math.h>
 
 #include <abi-bits/fcntl.h>
-
 #include <bits/ensure.h>
-
-#include <mlibc/lock.hpp>
+#include <frg/expected.hpp>
+#include <frg/mutex.hpp>
+#include <frg/printf.hpp>
+#include <mlibc/all-sysdeps.hpp>
 #include <mlibc/allocator.hpp>
+#include <mlibc/charcode.hpp>
 #include <mlibc/debug.hpp>
 #include <mlibc/file-io.hpp>
-#include <mlibc/ansi-sysdeps.hpp>
-#include <frg/mutex.hpp>
-#include <frg/expected.hpp>
-#include <frg/printf.hpp>
+#include <mlibc/global-config.hpp>
+#include <mlibc/locale.hpp>
+#include <mlibc/lock.hpp>
+#include <mlibc/strings.hpp>
 
 template<typename F>
 struct PrintfAgent {
@@ -348,8 +351,22 @@ static void store_int(void *dest, unsigned int size, unsigned long long i) {
 	}
 }
 
-template<typename H>
-static int do_scanf(H &handler, const char *fmt, __builtin_va_list args) {
+void store_float(void *dest, unsigned int size, long double f) {
+	switch (size) {
+		case SCANF_TYPE_LL:
+			*(long double *)dest = f;
+			break;
+		case SCANF_TYPE_L:
+			*(double *)dest = f;
+			break;
+		default:
+			*(float *)dest = f;
+			break;
+	}
+}
+
+template<typename H, typename Char>
+int do_scanf(H &handler, const Char *fmt, __builtin_va_list args) {
 	#define NOMATCH_CHECK(cond) ({ if(cond) return match_count; }) // if cond is true, matching error
 	#define EOF_CHECK(cond) ({ if(cond) return match_count ? match_count : EOF; }) // if cond is true, no more data to read
 	int match_count = 0;
@@ -370,7 +387,7 @@ static int do_scanf(H &handler, const char *fmt, __builtin_va_list args) {
 			continue;
 		}
 
-		void *dest = NULL;
+		void *dest = nullptr;
 		/* %n$ format */
 		if (isdigit(*fmt) && fmt[1] == '$') {
 			/* TODO: dest = get_arg_at_pos(args, *fmt -'0'); */
@@ -384,17 +401,44 @@ static int do_scanf(H &handler, const char *fmt, __builtin_va_list args) {
 
 		bool allocate_buf = false;
 		auto temp_dest = frg::string<MemoryAllocator>{getAllocator()};
+		auto temp_wdest = frg::basic_string<wchar_t, MemoryAllocator>{getAllocator()};
 		int count = 0;
 
-		const auto append_to_buffer = [&](char c) {
-			if(allocate_buf) {
-				temp_dest += c;
-				count++;
+		const auto append_to_buffer = [&](wchar_t c) {
+			size_t res = 0;
+			char c_buf[MB_LEN_MAX];
+
+			if (c == L'\0') {
+				res = 1;
+				c_buf[0] = '\0';
+			} else {
+				mbstate_t shift_state = {};
+				res = wcrtomb(c_buf, c, &shift_state);
+				__ensure(res != size_t(-1));
+			}
+
+			if (allocate_buf) {
+				for (size_t i = 0; i < res; i++)
+					temp_dest += c_buf[i];
 			} else {
 				char *typed_dest = (char *)dest;
 				if(typed_dest)
-					typed_dest[count++] = c;
+					memcpy(typed_dest + count, c_buf, res);
 			}
+
+			count += res;
+		};
+
+		const auto append_to_wbuffer = [&](wchar_t c) {
+			if(allocate_buf) {
+				temp_wdest += c;
+			} else {
+				wchar_t *typed_dest = (wchar_t *)dest;
+				if(typed_dest)
+					typed_dest[count] = c;
+			}
+
+			count++;
 		};
 
 		int width = 0;
@@ -486,16 +530,21 @@ static int do_scanf(H &handler, const char *fmt, __builtin_va_list args) {
 				char c = handler.look_ahead();
 				EOF_CHECK(c == '\0');
 
-				if((*fmt == 'i' || *fmt == 'd') && c == '-') {
+				if(c == '-') {
 					handler.consume();
 					is_negative = true;
-				}
+				} else if(c == '+')
+					handler.consume();
 
 				if(*fmt == 'i' && handler.look_ahead() == '0') {
 					handler.consume();
-					if(handler.look_ahead() == 'x') {
+					c = handler.look_ahead();
+					if(tolower(c) == 'x') {
 						handler.consume();
 						base = 16;
+					} else if(tolower(c) == 'b') {
+						handler.consume();
+						base = 2;
 					} else {
 						base = 8;
 					}
@@ -537,9 +586,18 @@ static int do_scanf(H &handler, const char *fmt, __builtin_va_list args) {
 							res = res * 8 + (c - '0');
 							c = handler.look_ahead();
 						}
-						break;
 						// no need for a match check, the starting 0 was already consumed
+						break;
+					case 2:
+						NOMATCH_CHECK(c != '0' && c != '1');
+						while (c == '0' || c == '1') {
+							handler.consume();
+							res = res * 2 + (c - '0');
+							c = handler.look_ahead();
+						}
+						break;
 				}
+
 				if (dest) {
 					if(is_negative)
 						store_int(dest, type, -res);
@@ -549,30 +607,282 @@ static int do_scanf(H &handler, const char *fmt, __builtin_va_list args) {
 				break;
 			}
 			case 'o': {
+				bool is_negative = false;
 				unsigned long long res = 0;
 				char c = handler.look_ahead();
 				EOF_CHECK(c == '\0');
+
+				if(c == '-') {
+					handler.consume();
+					is_negative = true;
+				} else if(c == '+')
+					handler.consume();
+
+				c = handler.look_ahead();
 				NOMATCH_CHECK(!(c >= '0' && c <= '7'));
 				while (c >= '0' && c <= '7') {
 					handler.consume();
 					res = res * 8 + (c - '0');
 					c = handler.look_ahead();
 				}
-				if (dest)
-					store_int(dest, type, res);
+
+				if (dest) {
+					if(is_negative)
+						store_int(dest, type, -res);
+					else
+						store_int(dest, type, res);
+				}
 				break;
 			}
 			case 'x':
 			case 'X': {
+				bool is_negative = false;
+				unsigned long long res = 0;
+				char c = handler.look_ahead();
+				int digit_count = 0;
+				int consumed = 0;
+				EOF_CHECK(c == '\0');
+
+				if(c == '-') {
+					handler.consume();
+					consumed++;
+					is_negative = true;
+				} else if(c == '+') {
+					handler.consume();
+					consumed++;
+				}
+
+				c = handler.look_ahead();
+				if (c == '0' && (!width || consumed < width)) {
+					handler.consume();
+					consumed++;
+					c = handler.look_ahead();
+					if (tolower(c) == 'x' && (!width || consumed < width)) {
+						handler.consume();
+						consumed++;
+						c = handler.look_ahead();
+					} else {
+						digit_count++;
+					}
+				}
+
+				while (!width || consumed < width) {
+					if (c >= '0' && c <= '9') {
+						handler.consume();
+						res = res * 16 + (c - '0');
+					} else if (c >= 'a' && c <= 'f') {
+						handler.consume();
+						res = res * 16 + (c - 'a' + 10);
+					} else if (c >= 'A' && c <= 'F') {
+						handler.consume();
+						res = res * 16 + (c - 'A' + 10);
+					} else {
+						break;
+					}
+					digit_count++;
+					consumed++;
+					c = handler.look_ahead();
+				}
+				NOMATCH_CHECK(digit_count == 0);
+
+				if (dest) {
+					if(is_negative)
+						store_int(dest, type, -res);
+					else
+						store_int(dest, type, res);
+				}
+				break;
+			}
+			case 'b': {
+				bool is_negative = false;
 				unsigned long long res = 0;
 				char c = handler.look_ahead();
 				int count = 0;
 				EOF_CHECK(c == '\0');
+
+				if(c == '-') {
+					handler.consume();
+					c = handler.look_ahead();
+					is_negative = true;
+				} else if(c == '+') {
+					handler.consume();
+					c = handler.look_ahead();
+				}
+
 				if (c == '0') {
 					handler.consume();
-					++count;
 					c = handler.look_ahead();
-					if (c == 'x') {
+					if (tolower(c) == 'b') {
+						handler.consume();
+						c = handler.look_ahead();
+					}
+				}
+				while (true) {
+					if (c == '0' || c == '1') {
+						handler.consume();
+						res = res * 2 + (c - '0');
+					} else {
+						break;
+					}
+					count++;
+					c = handler.look_ahead();
+				}
+				NOMATCH_CHECK(count == 0);
+
+				if (dest) {
+					if(is_negative)
+						store_int(dest, type, -res);
+					else
+						store_int(dest, type, res);
+				}
+				break;
+			}
+			case 's': {
+				Char c = handler.look_ahead();
+				EOF_CHECK(c == '\0');
+				while (c && !isspace(c)) {
+					handler.consume();
+
+					if(type == SCANF_TYPE_L)
+						append_to_wbuffer(c);
+					else
+						append_to_buffer(c);
+
+					c = handler.look_ahead();
+					if (width && count >= width)
+						break;
+				}
+				NOMATCH_CHECK(count == 0);
+
+				if(type == SCANF_TYPE_L)
+					append_to_wbuffer(L'\0');
+				else
+					append_to_buffer('\0');
+
+				break;
+			}
+			case 'c': {
+				char c = handler.look_ahead();
+				EOF_CHECK(c == '\0');
+				if (!width)
+					width = 1;
+				while (c && count < width) {
+					handler.consume();
+
+					if(type == SCANF_TYPE_L)
+						append_to_wbuffer(c);
+					else
+						append_to_buffer(c);
+
+					c = handler.look_ahead();
+				}
+				break;
+			}
+			case '[': {
+				fmt++;
+				bool invert = *fmt == '^';
+				if (invert)
+					fmt++;
+
+				auto decodeChar = [](frg::basic_string_view<Char> view, size_t off) {
+					if constexpr (std::is_same_v<Char, char>) {
+						mbstate_t mbs{};
+						wchar_t wc;
+						auto len = mbrtowc(&wc, &view[off], view.size() - off, &mbs);
+						__ensure(len > 0);
+						return std::make_pair(wc, len);
+					} else {
+						return std::make_pair(view[off], 1);
+					}
+				};
+
+				size_t scan_offset = *fmt == ']' ? 1 : 0;
+				frg::basic_string_view remaining{fmt};
+				size_t len = remaining.find_first(']', scan_offset);
+				EOF_CHECK(len == size_t(-1));
+				auto scansetView = remaining.sub_string(0, len);
+
+				auto inScanset = [&](wchar_t c) -> bool {
+					size_t off = 0;
+
+					while (off < scansetView.size()) {
+						auto [first_char, first_char_len] = decodeChar(scansetView, off);
+
+						if (first_char == c)
+							return !invert;
+
+						if (off + first_char_len + 1 == scansetView.size() && scansetView[off + first_char_len] == '-') {
+							return (c == '-') ? !invert : invert;
+						} else if ((off + first_char_len + 1) < scansetView.size() && scansetView[off + first_char_len] == L'-' && c > first_char) {
+							// determine end of range
+							auto [second_char, second_char_len] = decodeChar(scansetView, off + first_char_len + 1);
+
+							if (c <= second_char)
+								return !invert;
+							off += first_char_len + 1 + second_char_len;
+							continue;
+						}
+						off++;
+					}
+
+					return invert;
+				};
+
+				fmt += scansetView.size();
+
+				auto nextChar = [&]() -> wchar_t {
+					if constexpr (std::is_same_v<Char, char>) {
+						wchar_t wc;
+						char part = handler.look_ahead();
+						mbstate_t state{};
+
+						int res = mbrtowc(&wc, &part, 1, &state);
+
+						while (res < 0) {
+							handler.consume();
+							part = handler.look_ahead();
+							res = mbrtowc(&wc, &part, 1, &state);
+						}
+
+						return wc;
+					} else {
+						return handler.look_ahead();
+					}
+				};
+
+				wchar_t c = nextChar();
+				EOF_CHECK(c == '\0');
+				while (c && (!width || count < width)) {
+					if (!inScanset(c))
+						break;
+					handler.consume();
+
+					if(type == SCANF_TYPE_L)
+						append_to_wbuffer(c);
+					else
+						append_to_buffer(c);
+
+					c = nextChar();
+				}
+				NOMATCH_CHECK(count == 0);
+
+				if(type == SCANF_TYPE_L)
+					append_to_wbuffer(L'\0');
+				else
+					append_to_buffer('\0');
+
+				break;
+			}
+			case 'p': {
+				unsigned long long res = 0;
+				char c = handler.look_ahead();
+				int count = 0;
+				EOF_CHECK(c == '\0');
+
+				if (c == '0') {
+					handler.consume();
+					c = handler.look_ahead();
+					if (tolower(c) == 'x') {
 						handler.consume();
 						c = handler.look_ahead();
 					}
@@ -595,159 +905,218 @@ static int do_scanf(H &handler, const char *fmt, __builtin_va_list args) {
 					c = handler.look_ahead();
 				}
 				NOMATCH_CHECK(count == 0);
-				if (dest)
-					store_int(dest, type, res);
-				break;
-			}
-			case 'b': {
-				unsigned long long res = 0;
-				char c = handler.look_ahead();
-				int count = 0;
-				EOF_CHECK(c == '\0');
-				if (c == '0') {
-					handler.consume();
-					c = handler.look_ahead();
-					if (c == 'b' || c == 'B') {
-						handler.consume();
-						c = handler.look_ahead();
-					}
-				}
-				while (true) {
-					if (c == '0' || c == '1') {
-						handler.consume();
-						res = res * 2 + (c - '0');
-					} else {
-						break;
-					}
-					count++;
-					c = handler.look_ahead();
-				}
-				NOMATCH_CHECK(count == 0);
-				if (dest)
-					store_int(dest, type, res);
-				break;
-			}
-			case 's': {
-				char c = handler.look_ahead();
-				EOF_CHECK(c == '\0');
-				while (c && !isspace(c)) {
-					handler.consume();
-					append_to_buffer(c);
-					c = handler.look_ahead();
-					if (width && count >= width)
-						break;
-				}
-				NOMATCH_CHECK(count == 0);
-				append_to_buffer('\0');
-				break;
-			}
-			case 'c': {
-				char c = handler.look_ahead();
-				EOF_CHECK(c == '\0');
-				if (!width)
-					width = 1;
-				while (c && count < width) {
-					handler.consume();
-					append_to_buffer(c);
-					c = handler.look_ahead();
-					count++;
-				}
-				break;
-			}
-			case '[': {
-				fmt++;
-				int invert = 0;
-				if (*fmt == '^') {
-					invert = 1;
-					fmt++;
-				}
-
-				char scanset[257];
-				memset(&scanset[0], invert, sizeof(char) * 257);
-				scanset[0] = '\0';
-
-				if (*fmt == '-') {
-					fmt++;
-					scanset[1+'-'] = 1 - invert;
-				} else if (*fmt == ']') {
-					fmt++;
-					scanset[1+']'] = 1 - invert;
-				}
-
-				for (; *fmt != ']'; fmt++) {
-					if (!*fmt) return EOF;
-					if (*fmt == '-' && *fmt != ']') {
-						fmt++;
-						for (char c = *(fmt - 2); c < *fmt; c++)
-							scanset[1 + c] = 1 - invert;
-					}
-					scanset[1 + *fmt] = 1 - invert;
-				}
-
-				char c = handler.look_ahead();
-				EOF_CHECK(c == '\0');
-				while (c && (!width || count < width)) {
-					handler.consume();
-					if (!scanset[1 + c])
-						break;
-					append_to_buffer(c);
-					c = handler.look_ahead();
-				}
-				NOMATCH_CHECK(count == 0);
-				append_to_buffer('\0');
-				break;
-			}
-			case 'p': {
-				unsigned long long res = 0;
-				char c = handler.look_ahead();
-				int count = 0;
-				EOF_CHECK(c == '\0');
-
-				if (c == '0') {
-					handler.consume();
-					c = handler.look_ahead();
-					if (c == 'x') {
-						handler.consume();
-						c = handler.look_ahead();
-					}
-				}
-
-				while (true) {
-					if (c >= '0' && c <= '9') {
-						handler.consume();
-						res = res * 16 + (c - '0');
-					} else if (c >= 'a' && c <= 'f') {
-						handler.consume();
-						res = res * 16 + (c - 'a');
-					} else if (c >= 'A' && c <= 'F') {
-						handler.consume();
-						res = res * 16 + (c - 'A');
-					} else {
-						break;
-					}
-					count++;
-					c = handler.look_ahead();
-				}
-				NOMATCH_CHECK(count == 0);
 				void **typed_dest = (void **)dest;
-				*typed_dest = (void *)(uintptr_t)res;
+				if (typed_dest)
+					*typed_dest = (void *)(uintptr_t)res;
 				break;
 			}
 			case 'n': {
-				int *typed_dest = (int *)dest;
-				if (typed_dest)
-					*typed_dest = handler.num_consumed;
+				if(dest) {
+					switch(type) {
+					case SCANF_TYPE_CHAR:
+						*(signed char *)dest = (signed char)handler.num_consumed;
+						break;
+					case SCANF_TYPE_SHORT:
+						*(short *)dest = (short)handler.num_consumed;
+						break;
+					case SCANF_TYPE_INTMAX:
+						*(intmax_t *)dest = (intmax_t)handler.num_consumed;
+						break;
+					case SCANF_TYPE_L:
+						*(long *)dest = (long)handler.num_consumed;
+						break;
+					case SCANF_TYPE_LL:
+						*(long long *)dest = (long long)handler.num_consumed;
+						break;
+					case SCANF_TYPE_PTRDIFF:
+						*(ptrdiff_t *)dest = (ptrdiff_t)handler.num_consumed;
+						break;
+					case SCANF_TYPE_SIZE_T:
+						*(size_t *)dest = (size_t)handler.num_consumed;
+						break;
+					case SCANF_TYPE_INT:
+						*(int *)dest = (int)handler.num_consumed;
+						break;
+					}
+				}
+
 				continue;
+			}
+			case 'a':
+			case 'A':
+			case 'e':
+			case 'E':
+			case 'f':
+			case 'F':
+			case 'g':
+			case 'G': {
+				bool is_negative = false;
+				long double divisor = 10;
+				long double result = 0;
+				int base = 10;
+				int count = 0;
+				bool dot = false; // set to true once a decimal point has been hit
+				char c = handler.look_ahead();
+				EOF_CHECK(c == '\0');
+
+				if (c == '-' || c == '+') {
+					handler.consume();
+					is_negative = c == '-';
+					c = handler.look_ahead();
+				}
+
+				// nan?
+				if (tolower(c) == 'n') {
+					handler.consume();
+					c = handler.look_ahead();
+					if (tolower(c) != 'a')
+						return match_count;
+
+					handler.consume();
+					c = handler.look_ahead();
+					if (tolower(c) != 'n')
+						return match_count;
+
+					handler.consume();
+					if (dest)
+						store_float(dest, type, NAN);
+
+					break;
+				}
+
+				// inf?
+				if (tolower(c) == 'i') {
+					handler.consume();
+					c = handler.look_ahead();
+					size_t i = 0;
+					for (; i < strlen("nfinity"); i++) {
+						if (tolower(c) != "nfinity"[i])
+							break;
+						handler.consume();
+						c = handler.look_ahead();
+					}
+
+					NOMATCH_CHECK(i != 2 && i != 7);
+
+					if (dest)
+						store_float(dest, type, is_negative ? -INFINITY : INFINITY);
+
+					break;
+				}
+
+				if (c == '0') {
+					handler.consume();
+					c = handler.look_ahead();
+
+					if (c == 'x' || c == 'X') {
+						divisor = 16;
+						base = 16;
+						handler.consume();
+						c = handler.look_ahead();
+					}
+				}
+
+				while ((base == 16 ? isxdigit(c) : isdigit(c)) || (dot == false && c == '.')) {
+					handler.consume();
+					if (c == '.') {
+						dot = true;
+						c = handler.look_ahead();
+						continue;
+					}
+
+					long double character_value;
+					if (base == 10 || (c >= '0' && c <= '9'))
+						character_value = c - '0';
+					else if (base == 16 && tolower(c) >= 'a' && tolower(c) <= 'f')
+						character_value = tolower(c) - 'a' + 10;
+					else
+						break;
+
+					if (dot) {
+						result = result + character_value / divisor;
+						divisor *= base;
+					} else {
+						result = result * base + character_value;
+					}
+
+					++count;
+					c = handler.look_ahead();
+				}
+
+				NOMATCH_CHECK(count == 0);
+
+				if (c == 'e' || c == 'E') {
+					handler.consume();
+					c = handler.look_ahead();
+
+					bool exp_negative = false;
+
+					if (c == '-' || c == '+') {
+						handler.consume();
+						exp_negative = c == '-';
+						c = handler.look_ahead();
+					}
+
+					int exp = 0;
+
+					while (isdigit(c)) {
+						handler.consume();
+						exp = exp * 10 + (c - '0');
+						c = handler.look_ahead();
+					}
+
+					if (exp_negative)
+						exp = -exp;
+
+					result *= pow(10.0, exp);
+				} else if (c == 'p' || c == 'P') {
+					handler.consume();
+					c = handler.look_ahead();
+
+					bool exp_negative = false;
+
+					if (c == '-' || c == '+') {
+						handler.consume();
+						exp_negative = c == '-';
+						c = handler.look_ahead();
+					}
+
+					int exp = 0;
+
+					while (isdigit(c)) {
+						handler.consume();
+						exp = exp * 10 + (c - '0');
+						c = handler.look_ahead();
+					}
+
+					if (exp_negative)
+						exp = -exp;
+
+					result *= pow(2.0, exp);
+				}
+
+				if (dest)
+					store_float(dest, type, is_negative ? -result : result);
+				break;
 			}
 		}
 
 		if(allocate_buf && dest) {
-			char *temp = (char *)getAllocator().allocate(temp_dest.size() + 1);
-			memcpy(temp, temp_dest.data(), temp_dest.size());
-			temp[temp_dest.size()] = '\0';
+			if(type == SCANF_TYPE_L) {
+				wchar_t *temp = (wchar_t *)getAllocator().allocate((temp_wdest.size() + 1) * sizeof(wchar_t));
+				memcpy(temp, temp_wdest.data(), temp_wdest.size() * sizeof(wchar_t));
+				temp[temp_wdest.size()] = L'\0';
 
-			char **dest_ptr = (char **)dest;
-			*dest_ptr = temp;
+				wchar_t **dest_ptr = (wchar_t **)dest;
+				*dest_ptr = temp;
+			} else {
+				char *temp = (char *)getAllocator().allocate(temp_dest.size() + 1);
+				memcpy(temp, temp_dest.data(), temp_dest.size());
+				temp[temp_dest.size()] = '\0';
+
+				char **dest_ptr = (char **)dest;
+				*dest_ptr = temp;
+			}
 		}
 
 		if (dest) match_count++;
